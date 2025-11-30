@@ -17,63 +17,77 @@
 
 #### `shen_user`
 
-| Field           | Type   | Description                      |
-|-----------------|--------|----------------------------------|
-| pk              | PK     | Primary key                      |
-| username        | string | User identifier                  |
-| hashed_password | string | Hashed password                  |
-| active          | bool   | Account active status            |
-| role            | FK     | Foreign key to `shen_user_roles` |
+| Field           | Type      | Description                      |
+|-----------------|-----------|----------------------------------|
+| pk              | PK        | Primary key                      |
+| username        | string    | User identifier                  |
+| hashed_password | string    | Hashed password                  |
+| active          | bool      | Account active status            |
+| role            | FK        | Foreign key to `shen_user_roles` |
+| created_at      | timestamp | User creation timestamp          |
+| updated_at      | timestamp | User last update timestamp       |
 
 #### `shen_user_roles`
 
-| Field | Type   | Description |
-|-------|--------|-------------|
-| pk    | PK     | Primary key |
-| name  | string | Role name   |
+| Field      | Type      | Description                    |
+|------------|-----------|--------------------------------|
+| pk         | PK        | Primary key                    |
+| name       | string    | Role name                      |
+| created_at | timestamp | Role creation timestamp        |
+| updated_at | timestamp | Role last update timestamp     |
 
 **Available roles:** `server`, `user`, `admin`
 
 #### `shen_group`
 
-| Field | Type   | Description |
-|-------|--------|-------------|
-| pk    | PK     | Primary key |
-| name  | string | Group name  |
+| Field      | Type      | Description                    |
+|------------|-----------|--------------------------------|
+| pk         | PK        | Primary key                    |
+| name       | string    | Group name                     |
+| created_at | timestamp | Group creation timestamp       |
+| updated_at | timestamp | Group last update timestamp    |
 
 #### `shen_user_group`
 
-| Field    | Type | Description                 |
-|----------|------|-----------------------------|
-| pk       | PK   | Primary key                 |
-| user_fk  | FK   | Foreign key to `shen_user`  |
-| group_fk | FK   | Foreign key to `shen_group` |
+| Field      | Type      | Description                      |
+|------------|-----------|----------------------------------|
+| pk         | PK        | Primary key                      |
+| user_fk    | FK        | Foreign key to `shen_user`       |
+| group_fk   | FK        | Foreign key to `shen_group`      |
+| created_at | timestamp | Assignment creation timestamp    |
+| updated_at | timestamp | Assignment last update timestamp |
 
 #### `shen_application`
 
-| Field | Type   | Description      |
-|-------|--------|------------------|
-| pk    | PK     | Primary key      |
-| name  | string | Application name |
+| Field      | Type      | Description                       |
+|------------|-----------|-----------------------------------|
+| pk         | PK        | Primary key                       |
+| name       | string    | Application name                  |
+| created_at | timestamp | Application creation timestamp    |
+| updated_at | timestamp | Application last update timestamp |
 
 #### `shen_application_role`
 
-| Field    | Type    | Description   |
-|----------|---------|---------------|
-| pk       | PK      | Primary key   |
-| priority | integer | Role priority |
-| name     | string  | Role name     |
+| Field      | Type      | Description                            |
+|------------|-----------|----------------------------------------|
+| pk         | PK        | Primary key                            |
+| priority   | integer   | Role priority                          |
+| name       | string    | Role name                              |
+| created_at | timestamp | Application role creation timestamp    |
+| updated_at | timestamp | Application role last update timestamp |
 
 **Available roles:** `none`, `viewer`, `auditor`, `operator`, `admin`
 
 #### `shen_group_application_role`
 
-| Field                | Type | Description                                |
-|----------------------|------|--------------------------------------------|
-| pk                   | PK   | Primary key                                |
-| group_fk             | FK   | Foreign key to `shen_group`                |
-| application_fk       | FK   | Foreign key to `shen_application`          |
-| application_role_fk  | FK   | Foreign key to `shen_application_role`     |
+| Field               | Type      | Description                           |
+|---------------------|-----------|---------------------------------------|
+| pk                  | PK        | Primary key                           |
+| group_fk            | FK        | Foreign key to `shen_group`           |
+| application_fk      | FK        | Foreign key to `shen_application`     |
+| application_role_fk | FK        | Foreign key to `shen_application_role`|
+| created_at          | timestamp | Assignment creation timestamp         |
+| updated_at          | timestamp | Assignment last update timestamp      |
 
 #### `shen_tokens`
 
@@ -87,6 +101,7 @@
 | created_at     | timestamp | Token creation timestamp                     |
 | expires_at     | timestamp | Token expiration timestamp                   |
 | revoked        | bool      | Token revocation status                      |
+| revoked_at     | timestamp | Token revocation timestamp (nullable)        |
 
 
 ## CLI Design
