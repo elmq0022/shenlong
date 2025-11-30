@@ -18,7 +18,7 @@
 #### `shen_user`
 
 | Field           | Type      | Description                      |
-|-----------------|-----------|----------------------------------|
+|:----------------|:----------|:---------------------------------|
 | pk              | PK        | Primary key                      |
 | username        | string    | User identifier                  |
 | hashed_password | string    | Hashed password                  |
@@ -30,7 +30,7 @@
 #### `shen_user_roles`
 
 | Field      | Type      | Description                    |
-|------------|-----------|--------------------------------|
+|:-----------|:----------|:-------------------------------|
 | pk         | PK        | Primary key                    |
 | name       | string    | Role name                      |
 | created_at | timestamp | Role creation timestamp        |
@@ -41,7 +41,7 @@
 #### `shen_group`
 
 | Field      | Type      | Description                    |
-|------------|-----------|--------------------------------|
+|:-----------|:----------|:-------------------------------|
 | pk         | PK        | Primary key                    |
 | name       | string    | Group name                     |
 | created_at | timestamp | Group creation timestamp       |
@@ -50,7 +50,7 @@
 #### `shen_user_group`
 
 | Field      | Type      | Description                      |
-|------------|-----------|----------------------------------|
+|:-----------|:----------|:---------------------------------|
 | pk         | PK        | Primary key                      |
 | user_fk    | FK        | Foreign key to `shen_user`       |
 | group_fk   | FK        | Foreign key to `shen_group`      |
@@ -60,7 +60,7 @@
 #### `shen_application`
 
 | Field      | Type      | Description                       |
-|------------|-----------|-----------------------------------|
+|:-----------|:----------|:----------------------------------|
 | pk         | PK        | Primary key                       |
 | name       | string    | Application name                  |
 | created_at | timestamp | Application creation timestamp    |
@@ -69,7 +69,7 @@
 #### `shen_application_role`
 
 | Field      | Type      | Description                            |
-|------------|-----------|----------------------------------------|
+|:-----------|:----------|:---------------------------------------|
 | pk         | PK        | Primary key                            |
 | priority   | integer   | Role priority                          |
 | name       | string    | Role name                              |
@@ -81,7 +81,7 @@
 #### `shen_group_application_role`
 
 | Field               | Type      | Description                           |
-|---------------------|-----------|---------------------------------------|
+|:--------------------|:----------|:--------------------------------------|
 | pk                  | PK        | Primary key                           |
 | group_fk            | FK        | Foreign key to `shen_group`           |
 | application_fk      | FK        | Foreign key to `shen_application`     |
@@ -92,7 +92,7 @@
 #### `shen_tokens`
 
 | Field          | Type      | Description                                  |
-|----------------|-----------|----------------------------------------------|
+|:---------------|:----------|:---------------------------------------------|
 | pk             | PK        | Primary key                                  |
 | name           | string    | Token name/identifier                        |
 | token          | string    | Hashed token value                           |
