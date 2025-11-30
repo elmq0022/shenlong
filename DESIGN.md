@@ -40,6 +40,14 @@
 | pk    | PK     | Primary key |
 | name  | string | Group name  |
 
+#### `shen_user_group`
+
+| Field    | Type | Description                 |
+|----------|------|-----------------------------|
+| pk       | PK   | Primary key                 |
+| user_fk  | FK   | Foreign key to `shen_user`  |
+| group_fk | FK   | Foreign key to `shen_group` |
+
 #### `shen_application`
 
 | Field | Type   | Description      |
@@ -47,13 +55,24 @@
 | pk    | PK     | Primary key      |
 | name  | string | Application name |
 
-#### `shen_role`
+#### `shen_application_role`
 
-| Field    | Type    | Description      |
-|----------|---------|------------------|
-| pk       | PK      | Primary key      |
-| priority | integer | Role priority    |
-| name     | string  | Role name        |
+| Field    | Type    | Description   |
+|----------|---------|---------------|
+| pk       | PK      | Primary key   |
+| priority | integer | Role priority |
+| name     | string  | Role name     |
+
+**Available roles:** `none`, `viewer`, `auditor`, `operator`, `admin`
+
+#### `shen_group_application_role`
+
+| Field                | Type | Description                                |
+|----------------------|------|--------------------------------------------|
+| pk                   | PK   | Primary key                                |
+| group_fk             | FK   | Foreign key to `shen_group`                |
+| application_fk       | FK   | Foreign key to `shen_application`          |
+| application_role_fk  | FK   | Foreign key to `shen_application_role`     |
 
 
 ## CLI Design
