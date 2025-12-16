@@ -10,90 +10,177 @@
 
 ## Authorization Flow for Users Personal Access Tokens (PAT)
 
-### Verify identity with user name and password
+### 1. Verify Identity with Username and Password
 
-User logs in using this endpoint by submitting their username and password
+User logs in by submitting their credentials to the authentication endpoint.
 
+**Endpoint:**
+```
 POST /api/v1/auth/login
+```
 
-payload: {
-    username: string,
-    password: string 
+**Request Payload:**
+```json
+{
+    "username": "string",
+    "password": "string"
 }
+```
 
+**Response:**
 
-In return they get back a long-lived JWT to interact with the shen application.
-This token will be stored locally and used to authorize the Users/CLI to interact with shen.
-Users will then manage their PATs for an application or check their group memberships.
-Administrators have all user privileges but will also be able to manage users, groups, applications and RBAC settings.
+In return they receive a long-lived JWT to interact with the Shen application. This token is stored locally and used to authorize the user/CLI to interact with Shen. Users can then manage their PATs for applications or check their group memberships. Administrators have all user privileges plus the ability to manage users, groups, applications, and RBAC settings.
 
-status code: 200
-response: {
-    token: string (encoded jwt)
+**Long-lived JWT contains:**
+- `username` - User identifier
+- `role` - User's system role (from `shen_user_roles`: `service`, `user`, or `admin`)
+- `exp` - Expiration (1 month from issuance)
+
+**Note:** This token can be revoked by administrators.
+
+```
+Status: 200 OK
+```
+
+```json
+{
+    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
+```
 
-### Obtain a Personal Access Tokens Scoped to an Applications
+**Error Responses:**
+- `401 Unauthorized` - Invalid username or password
+- `403 Forbidden` - User account is inactive
 
-User submits a request to this endpoint and receives a PAT with a default exp of 1 month.
-User optionally submits an `exp` parameter as an iso date time.
-The request must include the user's long lived shen JWT from the identity verification step in the Authorization: Bearer <token> header. 
-The new application scoped token is named such that it can be more easily managed by a user or an administrator.
-The application name is also submitted and used to scope the token to only the named application. 
+---
 
+### 2. Obtain a Personal Access Token Scoped to an Application
+
+User submits a request to create a PAT with a default expiration of 1 month. The PAT is scoped to a specific application and can be optionally configured with a custom expiration date.
+
+**Endpoint:**
+```
 POST /api/v1/token/:name/:app
+```
 
-headers
+**Path Parameters:**
+- `:name` - Token identifier (enforced lowercase)
+- `:app` - Application name to scope the token to
 
-Authorization: Bearer <token> (encoded jwt)
+**Headers:**
+```
+Authorization: Bearer <long-lived-jwt>
+```
 
-params :
-- exp: iso string in utc optional
+**Query Parameters:**
+- `exp` *(optional)* - ISO 8601 datetime in UTC for custom expiration
 
-response: {
-    name: string
-    pat: string
+**Response:**
+
+Shen presents the plaintext PAT to the user **only once**. The hashed value is stored using bcrypt or argon2.
+
+```
+Status: 200 OK
+```
+
+```json
+{
+    "name": "my-prod-token",
+    "pat": "shen_pat_a1b2c3d4e5f6..."
 }
+```
 
-shen presents the plain text PAT to the user but only stores its hashed value.
-Shen will use bcrypt or argon to hash the PAT before storage.
+**Error Responses:**
+- `401 Unauthorized` - Invalid or expired long-lived JWT
+- `403 Forbidden` - User not authorized for the requested application
+- `404 Not Found` - Application not found
+- `409 Conflict` - Token name already exists for this user/application combination
 
-### Verify Application Access from PAT
+---
 
+### 3. Verify Application Access from PAT
+
+User exchanges their PAT for a short-lived JWT containing application-specific permissions.
+
+**Endpoint:**
+```
 POST /api/v1/authorize
+```
 
-The user submits their PAT to shen.
-Shen verifies the hashed token is valid, matches an active token record, and has not expired.
-The application scope is determined from the token record in the database (the `application_fk` from when the token was created).
-If the verification is successful shen returns a short lived encoded JWT containing:
-
-- username
-- aud (the application from the PAT record)
-- exp
-- role (determined by the user's group memberships and the application)
-
-A short lived token forces the user to request a new JWT often.
-This is desirable as it reduces the window for malicious activity.
-It also means changes in a users groups, roles, and authorized apps happen sooner as well.
-Default time for short lived is 7 minutes, but configurable via an env var: SHEN_JWT_SECONDS_TO_EXPIRY
-
-payload: {
-    pat: string
+**Request Payload:**
+```json
+{
+    "pat": "shen_pat_a1b2c3d4e5f6..."
 }
+```
 
-response: {
-    token: short lived jwt
-    exp: iso date time utc
+**Process:**
+
+1. Shen verifies the hashed token is valid, matches an active token record, and has not expired
+2. The application scope is determined from the token record (`application_fk`)
+3. User's role is resolved via group memberships (see Role Resolution below)
+4. A short-lived JWT is generated and returned
+
+**Short-lived JWT contains:**
+- `username` - User identifier
+- `aud` - Application name (from the PAT record)
+- `exp` - Expiration (7 minutes by default, configurable via `SHEN_JWT_SECONDS_TO_EXPIRY`)
+- `role` - Effective application role (determined by group memberships)
+
+**Why short-lived tokens?**
+Forcing frequent JWT regeneration reduces the window for malicious activity and ensures permission changes (group memberships, role assignments) take effect quickly.
+
+**Response:**
+
+```
+Status: 200 OK
+```
+
+```json
+{
+    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "exp": "2025-12-15T15:30:00Z"
 }
+```
 
+**Role Resolution:**
 
-### Request Application Access
+When a user is a member of multiple groups with different roles for the same application, Shen determines the effective role by selecting the **highest priority** role across all groups.
 
-If the token has not expired submit the encoded JWT to applicaton in Authorization: Bearer <JWT> request header to the application. 
-The application can decode the JWT with the shen's public key available at:
+**Resolution Process:**
+1. Lookup all groups the user belongs to (via `shen_user_group`)
+2. For each group, find the role assigned for the target application (via `shen_group_application_role`)
+3. Select the role with the highest priority value (via `shen_application_role.priority`)
+4. Include this role in the JWT
 
-GET https://shen.example.com/.well-known/jwks.json 
+**Example:**
+- User is in `developers` group → role: `viewer` (priority: 100)
+- User is in `leads` group → role: `operator` (priority: 300)
+- **Effective role:** `operator` (higher priority wins)
 
-Response:
+**Error Responses:**
+- `401 Unauthorized` - Invalid, expired, or revoked PAT
+- `403 Forbidden` - User no longer has access to the application (not in any groups with roles for this app)
+- `404 Not Found` - Application not found
+
+---
+
+### 4. Request Application Access
+
+Once the client has a valid short-lived JWT, it can access the target application.
+
+**How Applications Verify JWTs:**
+
+1. **Fetch Shen's Public Key:**
+
+Applications decode the JWT using Shen's public key available at:
+
+```
+GET https://shen.example.com/.well-known/jwks.json
+```
+
+**Response:**
+```json
 {
   "keys": [
     {
@@ -105,25 +192,88 @@ Response:
     }
   ]
 }
+```
 
-Once decoded the application must verify the following token information:
+2. **Send JWT to Application:**
 
-- sig
-- username
-- audience
-- exp
-- iat
-- RBAC
+```
+GET https://my-app.example.com/api/resource
+Authorization: Bearer <short-lived-jwt>
+```
 
+3. **Application Verifies:**
 
-If JWT is expired the user or their client must resubmit the PAT and application name to get a new short lived JWT. 
+The application must verify the following JWT claims:
+- `sig` - Signature is valid (using Shen's public key)
+- `username` - User identifier
+- `aud` - Audience matches the application name
+- `exp` - Token has not expired
+- `iat` - Issued at timestamp
+- `role` - User's RBAC role for authorization decisions
+
+**Token Expiration:**
+
+If the JWT has expired, the user or client must resubmit the PAT to `/api/v1/authorize` to obtain a new short-lived JWT. 
 
 
 ## Authorization Flow for Service Accounts
 
 Service account tokens would only be generated by an administrator.
 
-...
+TODO: Design service account token creation and authorization flow. Key questions to address:
+- How do service tokens determine permissions without a user/group?
+- Should service tokens have a fixed role or configurable role?
+- What's the API flow for service token authorization?
+
+
+## Token Revocation
+
+TODO: Design token revocation API and workflow. Key questions to address:
+- API endpoint for token revocation (e.g., `DELETE /api/v1/token/:name`)
+- Can users revoke their own tokens or admin only?
+- How are revoked long-lived JWTs tracked?
+- Should there be a token revocation list or blacklist?
+
+
+## Initial Bootstrap and Setup
+
+### Default Admin Account
+
+On first startup, if no users exist in the database, Shen will automatically create a default admin account:
+
+**Default credentials:**
+- Username: `admin`
+- Password: `admin`
+
+**Security Warning:** Change these credentials immediately after first login.
+
+**Configuration via Environment Variables:**
+- `SHEN_ADMIN_USERNAME` - Override default admin username (default: `admin`)
+- `SHEN_ADMIN_PASSWORD` - Override default admin password (default: `admin`)
+
+### Public/Private Key Generation
+
+On first startup, if no JWT signing keys exist, Shen will automatically generate an RSA key pair:
+- Private key: Used to sign JWTs
+- Public key: Exposed via `/.well-known/jwks.json` for applications to verify JWTs
+
+Keys are stored securely and can be rotated by administrators.
+
+### Database Seeding
+
+On startup, Shen will seed the following reference data if not present:
+
+**User Roles** (`shen_user_roles`):
+- `service`
+- `user`
+- `admin`
+
+**Application Roles** (`shen_application_role`):
+- `none` (priority: 0)
+- `viewer` (priority: 100)
+- `auditor` (priority: 200)
+- `operator` (priority: 300)
+- `admin` (priority: 400)
 
 
 ## Schema Design
