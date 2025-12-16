@@ -29,14 +29,12 @@ POST /api/v1/auth/login
 
 **Response:**
 
-In return they receive a long-lived JWT to interact with the Shen application. This token is stored locally and used to authorize the user/CLI to interact with Shen. Users can then manage their PATs for applications or check their group memberships. Administrators have all user privileges plus the ability to manage users, groups, applications, and RBAC settings.
+In return they receive a session token to interact with the Shen application. This token is stored locally and used to authorize the user/CLI to interact with Shen. Users can then manage their PATs for applications or check their group memberships. Administrators have all user privileges plus the ability to manage users, groups, applications, and RBAC settings.
 
-**Long-lived JWT contains:**
-- `username` - User identifier
-- `role` - User's system role (from `shen_user_roles`: `service`, `user`, or `admin`)
-- `exp` - Expiration (1 month from issuance)
-
-**Note:** This token can be revoked by administrators.
+The session token is a random string stored in the database (in `shen_sessions` table) with:
+- 1 month expiration (configurable via `SHEN_SESSION_EXPIRY_SECONDS`)
+- Can be instantly revoked by administrators
+- Validated on every request to Shen
 
 ```
 Status: 200 OK
@@ -44,7 +42,7 @@ Status: 200 OK
 
 ```json
 {
-    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "session_token": "shen_session_a1b2c3d4e5f6..."
 }
 ```
 
@@ -69,7 +67,7 @@ POST /api/v1/token/:name/:app
 
 **Headers:**
 ```
-Authorization: Bearer <long-lived-jwt>
+Authorization: Bearer <session-token>
 ```
 
 **Query Parameters:**
@@ -91,7 +89,7 @@ Status: 200 OK
 ```
 
 **Error Responses:**
-- `401 Unauthorized` - Invalid or expired long-lived JWT
+- `401 Unauthorized` - Invalid or expired session token
 - `403 Forbidden` - User not authorized for the requested application
 - `404 Not Found` - Application not found
 - `409 Conflict` - Token name already exists for this user/application combination
@@ -373,6 +371,20 @@ On startup, Shen will seed the following reference data if not present:
 | revoked_at     | timestamp | N      | N     | Token revocation timestamp (nullable)             |
 
 **Composite unique constraint:** `(user_fk, application_fk, name)` - A user can only have one token with the same name per application
+
+#### `shen_sessions`
+
+| Field          | Type      | Unique | Index | Description                                       |
+|:---------------|:----------|:-------|:------|:--------------------------------------------------|
+| pk             | PK        | Y      | -     | Primary key                                       |
+| token          | string    | Y      | Y     | Hashed session token value                        |
+| user_fk        | FK        | N      | Y     | Foreign key to `shen_user`                        |
+| created_at     | timestamp | N      | N     | Session creation timestamp                        |
+| expires_at     | timestamp | N      | N     | Session expiration timestamp                      |
+| revoked        | bool      | N      | N     | Session revocation status                         |
+| revoked_at     | timestamp | N      | N     | Session revocation timestamp (nullable)           |
+
+This table stores session tokens used for authenticating users to the Shen management API (not application PATs).
 
 
 ## CLI Design
