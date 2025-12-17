@@ -1,499 +1,130 @@
-# DESIGN AND REQUIREMENTS
+# Shen - Design Documentation
 
-## Database Selection and Tooling
+Shen is an authentication and authorization system for managing Personal Access Tokens (PATs) and Role-Based Access Control (RBAC) across applications.
 
-- **PostgreSQL** - Primary database
-- **Docker / Docker Compose** - Local development environment
-- **golang-migrate** - Versioned database migrations
-- **sqlc** - Auto-generating Go code from SQL queries
+## Overview
 
+Shen provides:
+- Session-based authentication for management operations
+- Personal Access Tokens (PATs) scoped to specific applications
+- Short-lived JWTs for application access
+- Group-based permission management with RBAC
+- Service accounts for automated systems
+- CLI tool (`shenctl`) for administration
 
-## Authorization Flow for Users Personal Access Tokens (PAT)
+## Documentation Structure
 
-### 1. Verify Identity with Username and Password
+1. **[Database Selection and Tooling](./docs/01-database.md)**
+   - PostgreSQL, Docker, golang-migrate, sqlc
 
-User logs in by submitting their credentials to the authentication endpoint.
+2. **[Authentication Flow](./docs/02-authentication.md)**
+   - User login with username/password
+   - Session token generation and management
 
-**Endpoint:**
-```
-POST /api/v1/auth/login
-```
+3. **[Authorization Flow - Personal Access Tokens](./docs/03-authorization.md)**
+   - Creating PATs scoped to applications
+   - Exchanging PATs for short-lived JWTs
+   - Role resolution via group memberships
+   - Application JWT verification
 
-**Request Payload:**
-```json
-{
-    "username": "string",
-    "password": "string"
-}
-```
+4. **[Service Accounts](./docs/04-service-accounts.md)**
+   - Service account characteristics
+   - Token-only access workflow
+   - Permission management via groups
 
-**Response:**
+5. **[Token Revocation](./docs/05-token-revocation.md)**
+   - Token revocation API design
+   - Authorization rules for revocation
 
-In return they receive a session token to interact with the Shen application. This token is stored locally and used to authorize the user/CLI to interact with Shen. Users can then manage their PATs for applications or check their group memberships. Administrators have all user privileges plus the ability to manage users, groups, applications, and RBAC settings.
+6. **[Initial Bootstrap and Setup](./docs/06-bootstrap.md)**
+   - Default admin account creation
+   - RSA key pair generation for JWT signing
+   - Database seeding (user roles, application roles)
 
-The session token is a random string stored in the database (in `shen_sessions` table) with:
-- 1 month expiration (configurable via `SHEN_SESSION_EXPIRY_SECONDS`)
-- Can be instantly revoked by administrators
-- Validated on every request to Shen
+7. **[Schema Design](./docs/07-schema.md)**
+   - Complete database schema
+   - All tables: users, groups, applications, tokens, sessions
+   - Constraints and indexes
 
-```
-Status: 200 OK
-```
+8. **[CLI Design](./docs/08-cli.md)**
+   - `shenctl` command reference
+   - User, group, application, and token management
 
-```json
-{
-    "session_token": "shen_session_a1b2c3d4e5f6..."
-}
-```
+9. **[RBAC Roles](./docs/09-rbac.md)**
+   - Available application roles
+   - Role priorities and resolution
 
-**Error Responses:**
-- `401 Unauthorized` - Invalid username or password
-- `403 Forbidden` - User account is inactive
+## Key Concepts
 
----
+### Token Types
 
-### 2. Obtain a Personal Access Token Scoped to an Application
+1. **Session Tokens** - For Shen management API access
+   - 1 month expiration (configurable)
+   - Database-backed for instant revocation
+   - Required for all `shenctl` operations
 
-User submits a request to create a PAT with a default expiration of 1 month. The PAT is scoped to a specific application and can be optionally configured with a custom expiration date.
+2. **Personal Access Tokens (PATs)** - For application access
+   - Scoped to user + application
+   - 1 month expiration (configurable)
+   - Exchanged for short-lived JWTs
 
-**Endpoint:**
-```
-POST /api/v1/token/:name/:app
-```
+3. **Short-lived JWTs** - For authenticated application requests
+   - 7 minute expiration (configurable)
+   - Signed with RSA keys
+   - Contains user, role, and application scope
 
-**Path Parameters:**
-- `:name` - Token identifier (enforced lowercase)
-- `:app` - Application name to scope the token to
+### Permission Model
 
-**Headers:**
-```
-Authorization: Bearer <session-token>
-```
+- **Users** are assigned to **groups**
+- **Groups** are assigned **roles** for specific **applications**
+- When a user has multiple groups with different roles for the same app, the **highest priority** role wins
+- **Service accounts** use the same permission model but cannot access Shen's management API
 
-**Query Parameters:**
-- `exp` *(optional)* - ISO 8601 datetime in UTC for custom expiration
+## Quick Start
 
-**Response:**
+1. Start Shen server (bootstraps admin account and keys)
+2. Login with `shenctl`: `shenctl auth login`
+3. Create an application: `shenctl app create my-app`
+4. Create a group: `shenctl group create developers`
+5. Assign role to group: `shenctl group assign-role developers my-app=viewer`
+6. Add user to group: `shenctl user add-groups alice developers`
+7. Create PAT: `shenctl token create alice-token my-app`
+8. Use PAT to get JWT for application access
 
-Shen presents the plaintext PAT to the user **only once**. The hashed value is stored using bcrypt or argon2.
-
-```
-Status: 200 OK
-```
-
-```json
-{
-    "name": "my-prod-token",
-    "pat": "shen_pat_a1b2c3d4e5f6..."
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized` - Invalid or expired session token
-- `403 Forbidden` - User not authorized for the requested application
-- `404 Not Found` - Application not found
-- `409 Conflict` - Token name already exists for this user/application combination
-
----
-
-### 3. Verify Application Access from PAT
-
-User exchanges their PAT for a short-lived JWT containing application-specific permissions.
-
-**Endpoint:**
-```
-POST /api/v1/authorize
-```
-
-**Request Payload:**
-```json
-{
-    "pat": "shen_pat_a1b2c3d4e5f6..."
-}
-```
-
-**Process:**
-
-1. Shen verifies the hashed token is valid, matches an active token record, and has not expired
-2. The application scope is determined from the token record (`application_id`)
-3. User's role is resolved via group memberships (see Role Resolution below)
-4. A short-lived JWT is generated and returned
-
-**Short-lived JWT contains:**
-- `username` - User identifier
-- `aud` - Application name (from the PAT record)
-- `exp` - Expiration (7 minutes by default, configurable via `SHEN_JWT_SECONDS_TO_EXPIRY`)
-- `role` - Effective application role (determined by group memberships)
-
-**Why short-lived tokens?**
-Forcing frequent JWT regeneration reduces the window for malicious activity and ensures permission changes (group memberships, role assignments) take effect quickly.
-
-**Response:**
+## Architecture Diagram
 
 ```
-Status: 200 OK
+┌──────────┐
+│  User    │
+└────┬─────┘
+     │ 1. Login (username/password)
+     ▼
+┌──────────────────┐
+│  Shen Server     │──► Session Token (database-backed)
+└────┬─────────────┘
+     │ 2. Create PAT (session token required)
+     ▼
+┌──────────────────┐
+│  PAT Storage     │──► PAT (hashed, scoped to app)
+└────┬─────────────┘
+     │ 3. Exchange PAT for JWT
+     ▼
+┌──────────────────┐
+│  JWT Generator   │──► Short-lived JWT (signed)
+└────┬─────────────┘
+     │ 4. Access application with JWT
+     ▼
+┌──────────────────┐
+│  Application     │──► Verifies JWT with public key
+└──────────────────┘
 ```
 
-```json
-{
-    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "exp": "2025-12-15T15:30:00Z"
-}
-```
-
-**Role Resolution:**
-
-When a user is a member of multiple groups with different roles for the same application, Shen determines the effective role by selecting the **highest priority** role across all groups.
-
-**Resolution Process:**
-1. Lookup all groups the user belongs to (via `shen_user_group`)
-2. For each group, find the role assigned for the target application (via `shen_group_application_role`)
-3. Select the role with the highest priority value (via `shen_application_role.priority`)
-4. Include this role in the JWT
-
-**Example:**
-- User is in `developers` group → role: `viewer` (priority: 100)
-- User is in `leads` group → role: `operator` (priority: 300)
-- **Effective role:** `operator` (higher priority wins)
-
-**Error Responses:**
-- `401 Unauthorized` - Invalid, expired, or revoked PAT
-- `403 Forbidden` - User no longer has access to the application (not in any groups with roles for this app)
-- `404 Not Found` - Application not found
-
----
-
-### 4. Request Application Access
-
-Once the client has a valid short-lived JWT, it can access the target application.
-
-**How Applications Verify JWTs:**
-
-1. **Fetch Shen's Public Key:**
-
-Applications decode the JWT using Shen's public key available at:
-
-```
-GET https://shen.example.com/.well-known/jwks.json
-```
-
-**Response:**
-```json
-{
-  "keys": [
-    {
-      "kty": "RSA",
-      "use": "sig",
-      "kid": "2024-12-15",
-      "n": "...",
-      "e": "AQAB"
-    }
-  ]
-}
-```
-
-2. **Send JWT to Application:**
-
-```
-GET https://my-app.example.com/api/resource
-Authorization: Bearer <short-lived-jwt>
-```
-
-3. **Application Verifies:**
-
-The application must verify the following JWT claims:
-- `sig` - Signature is valid (using Shen's public key)
-- `username` - User identifier
-- `aud` - Audience matches the application name
-- `exp` - Token has not expired
-- `iat` - Issued at timestamp
-- `role` - User's RBAC role for authorization decisions
-
-**Token Expiration:**
-
-If the JWT has expired, the user or client must resubmit the PAT to `/api/v1/authorize` to obtain a new short-lived JWT. 
-
-
-## Service Accounts
-
-Service accounts are user records with `role=service` that exist solely for token-based application access. They cannot authenticate to Shen's management API and have no password.
-
-### Characteristics
-
-- **No Shen Access:** Service accounts cannot login to Shen or use any Shen management endpoints
-- **No Password:** Service accounts have `hashed_password = NULL` and cannot use `/api/v1/auth/login`
-- **Token-Only:** Tokens are created for service accounts by administrators
-- **Group-Based Permissions:** Service accounts are added to groups and inherit application permissions the same way human users do
-
-### Service Account Workflow
-
-**1. Administrator creates service account:**
-```bash
-shenctl user create ci-deploy service
-# Creates user with role=service, no password
-```
-
-**2. Administrator adds service account to groups:**
-```bash
-shenctl user add-groups ci-deploy ops-team
-# Service account now has permissions via ops-team's group roles
-```
-
-**3. Administrator creates token for service account:**
-```bash
-shenctl token create deploy-token my-app ci-deploy
-# Token is created and linked to ci-deploy service account
-```
-
-**4. Service account uses token to access applications:**
-- Token is used with `POST /api/v1/authorize` (same as user PATs)
-- Permissions derived from group memberships
-- Short-lived JWT returned with application role
-
-### Authorization Logic
-
-When any request is made to Shen's management API:
-```
-if user.role == "service":
-    return 403 Forbidden
-```
-
-Service accounts are blocked from all Shen management operations but can have tokens used for application access via the `/api/v1/authorize` endpoint.
-
-
-## Token Revocation
-
-TODO: Design token revocation API and workflow. Key questions to address:
-- API endpoint for token revocation (e.g., `DELETE /api/v1/token/:name`)
-- Can users revoke their own tokens or admin only?
-- How are revoked long-lived JWTs tracked?
-- Should there be a token revocation list or blacklist?
-
-Administators can revoke any user or service account tokens. Users can only reject their own tokens.
-The endpoint to revoke a token is:
-
-DELETE /api/v1/token/:id
-
-
-## Initial Bootstrap and Setup
-
-### Default Admin Account
-
-On first startup, if no users exist in the database, Shen will automatically create a default admin account:
-
-**Default credentials:**
-- Username: `admin`
-- Password: `admin`
-
-**Security Warning:** Change these credentials immediately after first login.
-
-**Configuration via Environment Variables:**
-- `SHEN_ADMIN_USERNAME` - Override default admin username (default: `admin`)
-- `SHEN_ADMIN_PASSWORD` - Override default admin password (default: `admin`)
-
-### Public/Private Key Generation
-
-On first startup, if no JWT signing keys exist, Shen will automatically generate an RSA key pair:
-- Private key: Used to sign JWTs
-- Public key: Exposed via `/.well-known/jwks.json` for applications to verify JWTs
-
-Keys are stored securely and can be rotated by administrators.
-
-### Database Seeding
-
-On startup, Shen will seed the following reference data if not present:
-
-**User Roles** (`shen_user_roles`):
-- `service`
-- `user`
-- `admin`
-
-**Application Roles** (`shen_application_role`):
-- `authenticated` (priority: 0) - Authentication only, no Shen-managed authorization
-- `viewer` (priority: 100)
-- `auditor` (priority: 200)
-- `operator` (priority: 300)
-- `admin` (priority: 400)
-
-
-## Schema Design
-
-### Core Tables
-
-#### `shen_user`
-
-| Field           | Type      | Unique | Index | Description                                          |
-|:----------------|:----------|:-------|:------|:-----------------------------------------------------|
-| id              | PK        | Y      | -     | Primary key                                          |
-| username        | string    | Y      | Y     | User identifier (enforced lowercase)                 |
-| hashed_password | string    | N      | N     | Hashed password (nullable - NULL for service accounts)|
-| active          | bool      | N      | N     | Account active status                                |
-| role            | FK        | N      | Y     | Foreign key to `shen_user_roles`                     |
-| created_at      | timestamp | N      | N     | User creation timestamp                              |
-| updated_at      | timestamp | N      | N     | User last update timestamp                           |
-
-**Important:** Service accounts (role=`service`) must have `hashed_password = NULL`. These accounts cannot authenticate to Shen's management API.
-
-#### `shen_user_roles`
-
-| Field      | Type      | Unique | Index | Description                         |
-|:-----------|:----------|:-------|:------|:------------------------------------|
-| id         | PK        | Y      | -     | Primary key                         |
-| name       | string    | Y      | N     | Role name (enforced lowercase)      |
-| created_at | timestamp | N      | N     | Role creation timestamp             |
-| updated_at | timestamp | N      | N     | Role last update timestamp          |
-
-**Available roles:**
-- `service` - Service account, cannot login to Shen, token-only access
-- `user` - Regular user, can manage own PATs and view own groups
-- `admin` - Administrator, can manage all Shen resources
-
-#### `shen_group`
-
-| Field      | Type      | Unique | Index | Description                         |
-|:-----------|:----------|:-------|:------|:------------------------------------|
-| id         | PK        | Y      | -     | Primary key                         |
-| name       | string    | Y      | Y     | Group name (enforced lowercase)     |
-| created_at | timestamp | N      | N     | Group creation timestamp            |
-| updated_at | timestamp | N      | N     | Group last update timestamp         |
-
-#### `shen_user_group`
-
-| Field      | Type      | Unique | Index | Description                      |
-|:-----------|:----------|:-------|:------|:---------------------------------|
-| id         | PK        | Y      | -     | Primary key                      |
-| user_id    | FK        | N      | Y     | Foreign key to `shen_user`       |
-| group_id   | FK        | N      | Y     | Foreign key to `shen_group`      |
-| created_at | timestamp | N      | N     | Assignment creation timestamp    |
-| updated_at | timestamp | N      | N     | Assignment last update timestamp |
-
-**Composite unique constraint:** `(user_id, group_id)` - A user can only be assigned to a group once
-
-#### `shen_application`
-
-| Field      | Type      | Unique | Index | Description                            |
-|:-----------|:----------|:-------|:------|:---------------------------------------|
-| id         | PK        | Y      | -     | Primary key                            |
-| name       | string    | Y      | Y     | Application name (enforced lowercase)  |
-| created_at | timestamp | N      | N     | Application creation timestamp         |
-| updated_at | timestamp | N      | N     | Application last update timestamp      |
-
-#### `shen_application_role`
-
-| Field      | Type      | Unique | Index | Description                                 |
-|:-----------|:----------|:-------|:------|:--------------------------------------------|
-| id         | PK        | Y      | -     | Primary key                                 |
-| priority   | integer   | N      | Y     | Role priority                               |
-| name       | string    | Y      | N     | Role name (enforced lowercase)              |
-| created_at | timestamp | N      | N     | Application role creation timestamp         |
-| updated_at | timestamp | N      | N     | Application role last update timestamp      |
-
-**Available roles:** `authenticated`, `viewer`, `auditor`, `operator`, `admin`
-
-#### `shen_group_application_role`
-
-| Field               | Type      | Unique | Index | Description                           |
-|:--------------------|:----------|:-------|:------|:--------------------------------------|
-| id                  | PK        | Y      | -     | Primary key                           |
-| group_id            | FK        | N      | Y     | Foreign key to `shen_group`           |
-| application_id      | FK        | N      | Y     | Foreign key to `shen_application`     |
-| application_role_id | FK        | N      | Y     | Foreign key to `shen_application_role`|
-| created_at          | timestamp | N      | N     | Assignment creation timestamp         |
-| updated_at          | timestamp | N      | N     | Assignment last update timestamp      |
-
-**Composite unique constraint:** `(group_id, application_id)` - A group can only have one specific role per application
-
-#### `shen_tokens`
-
-| Field          | Type      | Unique | Index | Description                                       |
-|:---------------|:----------|:-------|:------|:--------------------------------------------------|
-| id             | PK        | Y      | -     | Primary key                                       |
-| name           | string    | N      | Y     | Token name/identifier (enforced lowercase)        |
-| token          | string    | Y      | Y     | Hashed token value                                |
-| user_id        | FK        | N      | Y     | Foreign key to `shen_user` (nullable)             |
-| application_id | FK        | N      | Y     | Foreign key to `shen_application` (nullable)      |
-| created_at     | timestamp | N      | N     | Token creation timestamp                          |
-| expires_at     | timestamp | N      | N     | Token expiration timestamp                        |
-| revoked        | bool      | N      | N     | Token revocation status                           |
-| revoked_at     | timestamp | N      | N     | Token revocation timestamp (nullable)             |
-
-**Composite unique constraint:** `(user_id, application_id, name)` - A user can only have one token with the same name per application
-
-This table stores PATs and service tokens. These long lived tokens can be submitted to obtain a short-lived stateless 
-JWT which can be used to authenticate to a specific application.
-
-#### `shen_sessions`
-
-| Field          | Type      | Unique | Index | Description                                       |
-|:---------------|:----------|:-------|:------|:--------------------------------------------------|
-| id             | PK        | Y      | -     | Primary key                                       |
-| token          | string    | Y      | Y     | Hashed session token value                        |
-| user_id        | FK        | N      | Y     | Foreign key to `shen_user`                        |
-| created_at     | timestamp | N      | N     | Session creation timestamp                        |
-| expires_at     | timestamp | N      | N     | Session expiration timestamp                      |
-| revoked        | bool      | N      | N     | Session revocation status                         |
-| revoked_at     | timestamp | N      | N     | Session revocation timestamp (nullable)           |
-
-This table stores session tokens used for authenticating users to the Shen management API (not application PATs).
-
-
-## CLI Design
-
-The CLI program is named **`shenctl`** and will display help information when invoked without arguments.
-
-### Configuration Management
-
-```bash
-shenctl config show              # Display current configuration
-shenctl config set key=value     # Set a configuration value
-shenctl config del key           # Delete a configuration key
-```
-
-### User Management
-
-```bash
-shenctl user list                                           # List all users
-shenctl user create <user-name> <role>                      # Create a new user
-                                                            # Role: service-account, user, or admin
-shenctl user update <user-name> <role>                      # Update user role
-shenctl user delete <user-name>                             # Soft delete (mark as inactive)
-shenctl user add-groups <user-name> <group1> <group2> ...   # Add user to groups
-```
-
-### Group Management
-
-```bash
-shenctl group list                                          # List all groups
-shenctl group create <group-name>                           # Create a new group
-shenctl group delete <group-name>                           # Delete a group
-shenctl group add-users <group-name> <user1> <user2> ...    # Add users to group
-shenctl group assign-role <group-name> <app1=rbac1> ...     # Assign roles to group
-```
-
-### Application Management
-
-```bash
-shenctl app list                # List all applications
-shenctl app create <app-name>   # Create a new application
-shenctl app delete <app-name>   # Soft delete (mark as inactive)
-```
-
-### Token Management
-
-```bash
-shenctl token list [user]                    # List tokens (user optional, admin only)
-shenctl token create <token-name> <app> [user]  # Create token (user optional, admin only)
-shenctl token revoke <id>            # Revoke a token
-```
-
-## RBAC Roles
-
-Custom RBAC roles are not supported in the initial implementation to help narrow the project scope.
-
-### Available Roles
-
-- **authenticated** - Authentication only. User identity is verified by Shen, but the application handles its own authorization logic. Useful for applications with custom permission systems or during migration to Shen-managed RBAC.
-- **viewer** - Read-only access
-- **auditor** - Audit and compliance access
-- **operator** - Operational management
-- **admin** - Full administrative access
+## Development Status
+
+This is a learning project for understanding authentication and authorization system design. Current implementation status:
+
+- ✅ Design complete
+- ⏳ Implementation in progress
+- ⏳ Testing
+- ⏳ Documentation
+- ⏳ Production hardening
