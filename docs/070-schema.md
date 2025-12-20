@@ -10,7 +10,7 @@
 | username        | string    | Y      | Y     | User identifier (enforced lowercase)                 |
 | hashed_password | string    | N      | N     | Hashed password using Argon2 (nullable - NULL for service accounts)|
 | active          | bool      | N      | N     | Account active status (default: true)                |
-| role            | FK        | N      | Y     | Foreign key to `shen_user_roles` (default: 'user')   |
+| role            | FK        | N      | Y     | Foreign key to `shen_user_role` (default: 'user')   |
 | created_at      | timestamp | N      | N     | User creation timestamp                              |
 | updated_at      | timestamp | N      | N     | User last update timestamp                           |
 
