@@ -14,47 +14,47 @@ Shen provides:
 
 ## Documentation Structure
 
-1. **[Database Selection and Tooling](./docs/01-database.md)**
+1. **[Database Selection and Tooling](./docs/010-database.md)**
    - PostgreSQL, Docker, golang-migrate, sqlc
 
-2. **[Authentication Flow](./docs/02-authentication.md)**
+2. **[Authentication Flow](./docs/020-authentication.md)**
    - User login with username/password
    - Session token generation and management
 
-3. **[Authorization Flow - Personal Access Tokens](./docs/03-authorization.md)**
+3. **[Authorization Flow - Personal Access Tokens](./docs/030-authorization.md)**
    - Creating PATs scoped to applications
    - Exchanging PATs for short-lived JWTs
    - Role resolution via group memberships
    - Application JWT verification
 
-4. **[Service Accounts](./docs/04-service-accounts.md)**
+4. **[Service Accounts](./docs/040-service-accounts.md)**
    - Service account characteristics
    - Token-only access workflow
    - Permission management via groups
 
-5. **[Token Revocation](./docs/05-token-revocation.md)**
+5. **[Token Revocation](./docs/050-token-revocation.md)**
    - Token revocation API design
    - Authorization rules for revocation
 
-6. **[Initial Bootstrap and Setup](./docs/06-bootstrap.md)**
+6. **[Initial Bootstrap and Setup](./docs/060-bootstrap.md)**
    - Default admin account creation
    - RSA key pair generation for JWT signing
    - Database seeding (user roles, application roles)
 
-7. **[Schema Design](./docs/07-schema.md)**
+7. **[Schema Design](./docs/070-schema.md)**
    - Complete database schema
    - All tables: users, groups, applications, tokens, sessions
    - Constraints and indexes
 
-8. **[CLI Design](./docs/08-cli.md)**
+8. **[CLI Design](./docs/080-cli.md)**
    - `shenctl` command reference
    - User, group, application, and token management
 
-9. **[RBAC Roles](./docs/09-rbac.md)**
+9. **[RBAC Roles](./docs/090-rbac.md)**
    - Available application roles
    - Role priorities and resolution
 
-10. **[Future Enhancements](./docs/10-future-enhancements.md)**
+10. **[Future Enhancements](./docs/100-future-enhancements.md)**
    - Token lifecycle notifications (expiration reminders, security alerts)
    - Audit logging
    - Key rotation
