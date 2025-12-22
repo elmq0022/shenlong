@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS shen_user(
     id serial PRIMARY KEY,
     username VARCHAR (128) UNIQUE NOT NULL,
@@ -10,3 +12,5 @@ CREATE TABLE IF NOT EXISTS shen_user(
 );
 
 CREATE INDEX idx_user_role ON shen_user(role);
+
+COMMIT;
