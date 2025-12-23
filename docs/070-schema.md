@@ -89,35 +89,35 @@ This table defines which users are managers of which groups. Group managers can 
 | created_at | timestamp | N      | N     | Application creation timestamp                |
 | updated_at | timestamp | N      | N     | Application last update timestamp             |
 
-### `shen_application_role`
+### `shen_permission`
 
 | Field      | Type      | Unique | Index | Description                                 |
 |:-----------|:----------|:-------|:------|:--------------------------------------------|
 | id         | PK        | Y      | -     | Primary key                                 |
-| priority   | integer   | N      | Y     | Role priority                               |
-| name       | string    | Y      | N     | Role name (enforced lowercase)              |
-| created_at | timestamp | N      | N     | Application role creation timestamp         |
-| updated_at | timestamp | N      | N     | Application role last update timestamp      |
+| priority   | integer   | N      | Y     | Permission priority                         |
+| name       | string    | Y      | N     | Permission name (enforced lowercase)        |
+| created_at | timestamp | N      | N     | Permission creation timestamp               |
+| updated_at | timestamp | N      | N     | Permission last update timestamp            |
 
-**Available roles:** `authenticated`, `viewer`, `auditor`, `operator`, `admin`
+**Available permissions:** `authenticated`, `viewer`, `auditor`, `operator`, `admin`
 
-### `shen_group_application_role_assignment`
+### `shen_group_app_permission`
 
-| Field               | Type      | Unique | Index | Description                           |
-|:--------------------|:----------|:-------|:------|:--------------------------------------|
-| id                  | PK        | Y      | -     | Primary key                           |
-| group_id            | FK        | N      | Y     | Foreign key to `shen_group`           |
-| application_id      | FK        | N      | Y     | Foreign key to `shen_application`     |
-| application_role_id | FK        | N      | Y     | Foreign key to `shen_application_role`|
-| created_at          | timestamp | N      | N     | Assignment creation timestamp         |
-| updated_at          | timestamp | N      | N     | Assignment last update timestamp      |
+| Field         | Type      | Unique | Index | Description                           |
+|:--------------|:----------|:-------|:------|:--------------------------------------|
+| id            | PK        | Y      | -     | Primary key                           |
+| group_id      | FK        | N      | Y     | Foreign key to `shen_group`           |
+| application_id| FK        | N      | Y     | Foreign key to `shen_application`     |
+| permission_id | FK        | N      | Y     | Foreign key to `shen_permission`      |
+| created_at    | timestamp | N      | N     | Assignment creation timestamp         |
+| updated_at    | timestamp | N      | N     | Assignment last update timestamp      |
 
-**Composite unique constraint:** `(group_id, application_id)` - A group can only have one specific role per application
+**Composite unique constraint:** `(group_id, application_id)` - A group can only have one specific permission per application
 
 **Foreign key constraints:**
 - `group_id` REFERENCES `shen_group(id)` ON DELETE CASCADE
 - `application_id` REFERENCES `shen_application(id)` ON DELETE CASCADE
-- `application_role_id` REFERENCES `shen_application_role(id)` ON DELETE RESTRICT
+- `permission_id` REFERENCES `shen_permission(id)` ON DELETE RESTRICT
 
 ### `shen_tokens`
 

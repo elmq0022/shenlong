@@ -98,9 +98,9 @@ When a user is a member of multiple groups with different roles for the same app
 
 **Resolution Process:**
 1. Lookup all groups the user belongs to (via `shen_user_group_member`)
-2. For each group, find the role assigned for the target application (via `shen_group_application_role_assignment`)
-3. Select the role with the highest priority value (via `shen_application_role.priority`)
-4. Include this role in the JWT
+2. For each group, find the permission assigned for the target application (via `shen_group_app_permission`)
+3. Select the permission with the highest priority value (via `shen_permission.priority`)
+4. Include this permission in the JWT
 
 **Example:**
 - User is in `developers` group → role: `viewer` (priority: 100)
