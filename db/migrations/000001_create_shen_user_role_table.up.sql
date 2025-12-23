@@ -7,4 +7,10 @@ CREATE TABLE IF NOT EXISTS shen_user_role (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Insert default user roles
+INSERT INTO shen_user_role (name) VALUES
+    ('service'),
+    ('user'),
+    ('admin');
+
 COMMIT;
