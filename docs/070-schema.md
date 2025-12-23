@@ -125,7 +125,7 @@ This table defines which users are managers of which groups. Group managers can 
 |:---------------|:----------|:-------|:------|:--------------------------------------------------|
 | id             | PK        | Y      | -     | Primary key                                       |
 | name           | string    | N      | Y     | Token name/identifier (enforced lowercase)        |
-| token          | string    | Y      | Y     | Hashed token value                                |
+| token          | string    | Y      | Y     | Hashed token value (Argon2id)                     |
 | user_id        | FK        | N      | Y     | Foreign key to `shen_user`                        |
 | application_id | FK        | N      | Y     | Foreign key to `shen_application`                 |
 | created_at     | timestamp | N      | Y     | Token creation timestamp                          |
@@ -138,6 +138,8 @@ This table defines which users are managers of which groups. Group managers can 
 **Foreign key constraints:**
 - `user_id` REFERENCES `shen_user(id)` ON DELETE CASCADE
 - `application_id` REFERENCES `shen_application(id)` ON DELETE CASCADE
+
+**Token Hashing:** PAT tokens are hashed using Argon2id with recommended parameters for password storage before being stored in the database.
 
 This table stores PATs and service tokens. These long lived tokens can be submitted to obtain a short-lived stateless JWT which can be used to authenticate to a specific application.
 

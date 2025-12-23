@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS shen_group_application_permission (
     CONSTRAINT unique_group_application UNIQUE (group_id, application_id)
 );
 
-CREATE INDEX group_id_idx ON shen_group_application_permission(group_id);
-CREATE INDEX application_id_idx ON shen_group_application_permission(application_id);
-CREATE INDEX permission_id_idx on shen_group_application_permission(permission_id);
+CREATE INDEX shen_group_application_permission_group_id_idx ON shen_group_application_permission(group_id);
+CREATE INDEX shen_group_application_permission_application_id_idx ON shen_group_application_permission(application_id);
+CREATE INDEX shen_group_application_permission_permission_id_idx ON shen_group_application_permission(permission_id);
 
 COMMIT;

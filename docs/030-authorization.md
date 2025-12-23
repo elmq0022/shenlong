@@ -23,7 +23,7 @@ Authorization: Bearer <session-token>
 
 **Response:**
 
-Shen presents the plaintext PAT to the user **only once**. The hashed value is stored using argon2.
+Shen presents the plaintext PAT to the user **only once**. The hashed value is stored using Argon2id.
 
 ```
 Status: 200 OK
