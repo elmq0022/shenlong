@@ -1,0 +1,17 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS shen_user_group_member(
+    id serial PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    group_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES shen_user(id) ON DELETE CASCADE,
+    CONSTRAINT fk_group FOREIGN KEY (group_id) REFERENCES shen_group(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_group UNIQUE (user_id, group_id) 
+);
+
+CREATE INDEX idx_user_id ON shen_user_group_member(user_id);
+CREATE INDEX idx_group_id ON shen_user_group_member(group_id);
+
+COMMIT;
