@@ -1,19 +1,21 @@
 -- name: GetGroupByID :one
-SELECT * FROM shen_group
+SELECT id, name, active, created_at, updated_at FROM shen_group
 WHERE id = $1 LIMIT 1;
 
 -- name: GetGroupByName :one
-SELECT * FROM shen_group
+SELECT id, name, active, created_at, updated_at FROM shen_group
 WHERE name = $1 LIMIT 1;
 
 -- name: ListGroups :many
-SELECT * FROM shen_group
-ORDER BY name;
+SELECT id, name, active, created_at, updated_at FROM shen_group
+ORDER BY name
+LIMIT $1 OFFSET $2;
 
 -- name: ListActiveGroups :many
-SELECT * FROM shen_group
+SELECT id, name, active, created_at, updated_at FROM shen_group
 WHERE active = true
-ORDER BY name;
+ORDER BY name
+LIMIT $1 OFFSET $2;
 
 -- name: CreateGroup :one
 INSERT INTO shen_group (
@@ -21,7 +23,7 @@ INSERT INTO shen_group (
 ) VALUES (
   $1
 )
-RETURNING *;
+RETURNING id, name, active, created_at, updated_at;
 
 -- name: UpdateGroup :exec
 UPDATE shen_group

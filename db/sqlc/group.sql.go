@@ -92,10 +92,16 @@ const listActiveGroups = `-- name: ListActiveGroups :many
 SELECT id, name, active, created_at, updated_at FROM shen_group
 WHERE active = true
 ORDER BY name
+LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) ListActiveGroups(ctx context.Context) ([]ShenGroup, error) {
-	rows, err := q.db.Query(ctx, listActiveGroups)
+type ListActiveGroupsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListActiveGroups(ctx context.Context, arg ListActiveGroupsParams) ([]ShenGroup, error) {
+	rows, err := q.db.Query(ctx, listActiveGroups, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +129,16 @@ func (q *Queries) ListActiveGroups(ctx context.Context) ([]ShenGroup, error) {
 const listGroups = `-- name: ListGroups :many
 SELECT id, name, active, created_at, updated_at FROM shen_group
 ORDER BY name
+LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) ListGroups(ctx context.Context) ([]ShenGroup, error) {
-	rows, err := q.db.Query(ctx, listGroups)
+type ListGroupsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListGroups(ctx context.Context, arg ListGroupsParams) ([]ShenGroup, error) {
+	rows, err := q.db.Query(ctx, listGroups, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
