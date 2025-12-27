@@ -10,12 +10,10 @@ import (
 )
 
 const createApplication = `-- name: CreateApplication :one
-INSERT INTO shen_application (
-  name
-) VALUES (
-  $1
-)
-RETURNING id, name, active, created_at, updated_at
+INSERT INTO shen_application(name)
+  VALUES ($1)
+RETURNING
+  id, name, active, created_at, updated_at
 `
 
 func (q *Queries) CreateApplication(ctx context.Context, name string) (ShenApplication, error) {
@@ -32,9 +30,12 @@ func (q *Queries) CreateApplication(ctx context.Context, name string) (ShenAppli
 }
 
 const deactivateApplication = `-- name: DeactivateApplication :exec
-UPDATE shen_application
-  set active = false
-WHERE id = $1
+UPDATE
+  shen_application
+SET
+  active = FALSE
+WHERE
+  id = $1
 `
 
 func (q *Queries) DeactivateApplication(ctx context.Context, id int32) error {
@@ -53,8 +54,17 @@ func (q *Queries) DeleteApplication(ctx context.Context, id int32) error {
 }
 
 const getApplicationByID = `-- name: GetApplicationByID :one
-SELECT id, name, active, created_at, updated_at FROM shen_application
-WHERE id = $1 LIMIT 1
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_application
+WHERE
+  id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetApplicationByID(ctx context.Context, id int32) (ShenApplication, error) {
@@ -71,8 +81,17 @@ func (q *Queries) GetApplicationByID(ctx context.Context, id int32) (ShenApplica
 }
 
 const getApplicationByName = `-- name: GetApplicationByName :one
-SELECT id, name, active, created_at, updated_at FROM shen_application
-WHERE name = $1 LIMIT 1
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_application
+WHERE
+  name = $1
+LIMIT 1
 `
 
 func (q *Queries) GetApplicationByName(ctx context.Context, name string) (ShenApplication, error) {
@@ -89,9 +108,18 @@ func (q *Queries) GetApplicationByName(ctx context.Context, name string) (ShenAp
 }
 
 const listActiveApplications = `-- name: ListActiveApplications :many
-SELECT id, name, active, created_at, updated_at FROM shen_application
-WHERE active = true
-ORDER BY name
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_application
+WHERE
+  active = TRUE
+ORDER BY
+  name
 LIMIT $1 OFFSET $2
 `
 
@@ -127,8 +155,16 @@ func (q *Queries) ListActiveApplications(ctx context.Context, arg ListActiveAppl
 }
 
 const listApplications = `-- name: ListApplications :many
-SELECT id, name, active, created_at, updated_at FROM shen_application
-ORDER BY name
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_application
+ORDER BY
+  name
 LIMIT $1 OFFSET $2
 `
 
@@ -164,10 +200,13 @@ func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsPara
 }
 
 const updateApplication = `-- name: UpdateApplication :exec
-UPDATE shen_application
-  set name = $2,
+UPDATE
+  shen_application
+SET
+  name = $2,
   active = $3
-WHERE id = $1
+WHERE
+  id = $1
 `
 
 type UpdateApplicationParams struct {

@@ -10,12 +10,10 @@ import (
 )
 
 const createGroup = `-- name: CreateGroup :one
-INSERT INTO shen_group (
-  name
-) VALUES (
-  $1
-)
-RETURNING id, name, active, created_at, updated_at
+INSERT INTO shen_group(name)
+  VALUES ($1)
+RETURNING
+  id, name, active, created_at, updated_at
 `
 
 func (q *Queries) CreateGroup(ctx context.Context, name string) (ShenGroup, error) {
@@ -32,9 +30,12 @@ func (q *Queries) CreateGroup(ctx context.Context, name string) (ShenGroup, erro
 }
 
 const deactivateGroup = `-- name: DeactivateGroup :exec
-UPDATE shen_group
-  set active = false
-WHERE id = $1
+UPDATE
+  shen_group
+SET
+  active = FALSE
+WHERE
+  id = $1
 `
 
 func (q *Queries) DeactivateGroup(ctx context.Context, id int32) error {
@@ -53,8 +54,17 @@ func (q *Queries) DeleteGroup(ctx context.Context, id int32) error {
 }
 
 const getGroupByID = `-- name: GetGroupByID :one
-SELECT id, name, active, created_at, updated_at FROM shen_group
-WHERE id = $1 LIMIT 1
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_group
+WHERE
+  id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetGroupByID(ctx context.Context, id int32) (ShenGroup, error) {
@@ -71,8 +81,17 @@ func (q *Queries) GetGroupByID(ctx context.Context, id int32) (ShenGroup, error)
 }
 
 const getGroupByName = `-- name: GetGroupByName :one
-SELECT id, name, active, created_at, updated_at FROM shen_group
-WHERE name = $1 LIMIT 1
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_group
+WHERE
+  name = $1
+LIMIT 1
 `
 
 func (q *Queries) GetGroupByName(ctx context.Context, name string) (ShenGroup, error) {
@@ -89,9 +108,18 @@ func (q *Queries) GetGroupByName(ctx context.Context, name string) (ShenGroup, e
 }
 
 const listActiveGroups = `-- name: ListActiveGroups :many
-SELECT id, name, active, created_at, updated_at FROM shen_group
-WHERE active = true
-ORDER BY name
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_group
+WHERE
+  active = TRUE
+ORDER BY
+  name
 LIMIT $1 OFFSET $2
 `
 
@@ -127,8 +155,16 @@ func (q *Queries) ListActiveGroups(ctx context.Context, arg ListActiveGroupsPara
 }
 
 const listGroups = `-- name: ListGroups :many
-SELECT id, name, active, created_at, updated_at FROM shen_group
-ORDER BY name
+SELECT
+  id,
+  name,
+  active,
+  created_at,
+  updated_at
+FROM
+  shen_group
+ORDER BY
+  name
 LIMIT $1 OFFSET $2
 `
 
@@ -164,10 +200,13 @@ func (q *Queries) ListGroups(ctx context.Context, arg ListGroupsParams) ([]ShenG
 }
 
 const updateGroup = `-- name: UpdateGroup :exec
-UPDATE shen_group
-  set name = $2,
+UPDATE
+  shen_group
+SET
+  name = $2,
   active = $3
-WHERE id = $1
+WHERE
+  id = $1
 `
 
 type UpdateGroupParams struct {

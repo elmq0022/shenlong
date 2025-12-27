@@ -12,9 +12,12 @@ import (
 )
 
 const activateUser = `-- name: ActivateUser :exec
-UPDATE shen_user
-  set active = true
-WHERE id = $1
+UPDATE
+  shen_user
+SET
+  active = TRUE
+WHERE
+  id = $1
 `
 
 func (q *Queries) ActivateUser(ctx context.Context, id int32) error {
@@ -23,7 +26,14 @@ func (q *Queries) ActivateUser(ctx context.Context, id int32) error {
 }
 
 const checkUsernameExists = `-- name: CheckUsernameExists :one
-SELECT EXISTS(SELECT 1 FROM shen_user WHERE username = $1)
+SELECT
+  EXISTS (
+    SELECT
+      1
+    FROM
+      shen_user
+    WHERE
+      username = $1)
 `
 
 func (q *Queries) CheckUsernameExists(ctx context.Context, username string) (bool, error) {
@@ -34,8 +44,12 @@ func (q *Queries) CheckUsernameExists(ctx context.Context, username string) (boo
 }
 
 const countActiveUsers = `-- name: CountActiveUsers :one
-SELECT COUNT(*) FROM shen_user
-WHERE active = true
+SELECT
+  COUNT(*)
+FROM
+  shen_user
+WHERE
+  active = TRUE
 `
 
 func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
@@ -46,7 +60,10 @@ func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
 }
 
 const countUsers = `-- name: CountUsers :one
-SELECT COUNT(*) FROM shen_user
+SELECT
+  COUNT(*)
+FROM
+  shen_user
 `
 
 func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
@@ -57,14 +74,10 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO shen_user (
-    username,
-    hashed_password,
-    role
-) VALUES (
-    $1, $2, $3
-)
-RETURNING id, username, hashed_password, active, role, created_at, updated_at
+INSERT INTO shen_user(username, hashed_password, role)
+  VALUES ($1, $2, $3)
+RETURNING
+  id, username, hashed_password, active, role, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -89,9 +102,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (ShenUse
 }
 
 const deactivateUser = `-- name: DeactivateUser :exec
-UPDATE shen_user
-  set active = false
-WHERE id = $1
+UPDATE
+  shen_user
+SET
+  active = FALSE
+WHERE
+  id = $1
 `
 
 func (q *Queries) DeactivateUser(ctx context.Context, id int32) error {
@@ -110,8 +126,19 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, hashed_password, active, role, created_at, updated_at FROM shen_user
-WHERE id = $1 LIMIT 1
+SELECT
+  id,
+  username,
+  hashed_password,
+  active,
+  ROLE,
+  created_at,
+  updated_at
+FROM
+  shen_user
+WHERE
+  id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (ShenUser, error) {
@@ -130,8 +157,19 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (ShenUser, error) {
 }
 
 const getUserByUserName = `-- name: GetUserByUserName :one
-SELECT id, username, hashed_password, active, role, created_at, updated_at FROM shen_user
-WHERE username = $1 LIMIT 1
+SELECT
+  id,
+  username,
+  hashed_password,
+  active,
+  ROLE,
+  created_at,
+  updated_at
+FROM
+  shen_user
+WHERE
+  username = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUserByUserName(ctx context.Context, username string) (ShenUser, error) {
@@ -150,9 +188,20 @@ func (q *Queries) GetUserByUserName(ctx context.Context, username string) (ShenU
 }
 
 const listActiveUsers = `-- name: ListActiveUsers :many
-SELECT id, username, hashed_password, active, role, created_at, updated_at FROM shen_user 
-where active = true
-ORDER BY username
+SELECT
+  id,
+  username,
+  hashed_password,
+  active,
+  ROLE,
+  created_at,
+  updated_at
+FROM
+  shen_user
+WHERE
+  active = TRUE
+ORDER BY
+  username
 LIMIT $1 OFFSET $2
 `
 
@@ -190,8 +239,18 @@ func (q *Queries) ListActiveUsers(ctx context.Context, arg ListActiveUsersParams
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, hashed_password, active, role, created_at, updated_at FROM shen_user
-ORDER BY username
+SELECT
+  id,
+  username,
+  hashed_password,
+  active,
+  ROLE,
+  created_at,
+  updated_at
+FROM
+  shen_user
+ORDER BY
+  username
 LIMIT $1 OFFSET $2
 `
 
@@ -229,9 +288,20 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ShenUse
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, username, hashed_password, active, role, created_at, updated_at FROM shen_user
-WHERE role = $1
-ORDER BY username
+SELECT
+  id,
+  username,
+  hashed_password,
+  active,
+  ROLE,
+  created_at,
+  updated_at
+FROM
+  shen_user
+WHERE
+  ROLE = $1
+ORDER BY
+  username
 LIMIT $2 OFFSET $3
 `
 
@@ -270,9 +340,12 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :exec
-UPDATE shen_user
-  set hashed_password = $2
-WHERE id = $1
+UPDATE
+  shen_user
+SET
+  hashed_password = $2
+WHERE
+  id = $1
 `
 
 type UpdateUserPasswordParams struct {
@@ -286,9 +359,12 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 }
 
 const updateUserRole = `-- name: UpdateUserRole :exec
-UPDATE shen_user
-  set role = $2
-WHERE id = $1
+UPDATE
+  shen_user
+SET
+  ROLE = $2
+WHERE
+  id = $1
 `
 
 type UpdateUserRoleParams struct {

@@ -12,12 +12,10 @@ import (
 )
 
 const addUserToGroup = `-- name: AddUserToGroup :one
-INSERT INTO shen_user_group_member(
-    user_id,
-    group_id
-) VALUES (
-    $1, $2
-) RETURNING id, user_id, group_id, created_at, updated_at
+INSERT INTO shen_user_group_member(user_id, group_id)
+    VALUES ($1, $2)
+RETURNING
+    id, user_id, group_id, created_at, updated_at
 `
 
 type AddUserToGroupParams struct {
@@ -39,8 +37,10 @@ func (q *Queries) AddUserToGroup(ctx context.Context, arg AddUserToGroupParams) 
 }
 
 const countAllGroupMembers = `-- name: CountAllGroupMembers :one
-SELECT COUNT(*)
-FROM shen_user_group_member
+SELECT
+    COUNT(*)
+FROM
+    shen_user_group_member
 `
 
 func (q *Queries) CountAllGroupMembers(ctx context.Context) (int64, error) {
@@ -51,9 +51,12 @@ func (q *Queries) CountAllGroupMembers(ctx context.Context) (int64, error) {
 }
 
 const countGroupsByUser = `-- name: CountGroupsByUser :one
-SELECT COUNT(*)
-FROM shen_user_group_member
-WHERE user_id = $1
+SELECT
+    COUNT(*)
+FROM
+    shen_user_group_member
+WHERE
+    user_id = $1
 `
 
 func (q *Queries) CountGroupsByUser(ctx context.Context, userID int32) (int64, error) {
@@ -64,9 +67,12 @@ func (q *Queries) CountGroupsByUser(ctx context.Context, userID int32) (int64, e
 }
 
 const countUsersByGroup = `-- name: CountUsersByGroup :one
-SELECT COUNT(*)
-FROM shen_user_group_member
-WHERE group_id = $1
+SELECT
+    COUNT(*)
+FROM
+    shen_user_group_member
+WHERE
+    group_id = $1
 `
 
 func (q *Queries) CountUsersByGroup(ctx context.Context, groupID int32) (int64, error) {
@@ -77,9 +83,17 @@ func (q *Queries) CountUsersByGroup(ctx context.Context, groupID int32) (int64, 
 }
 
 const getUserGroupMemberByID = `-- name: GetUserGroupMemberByID :one
-SELECT id, user_id, group_id, created_at, updated_at
-FROM shen_user_group_member
-WHERE id = $1 LIMIT 1
+SELECT
+    id,
+    user_id,
+    group_id,
+    created_at,
+    updated_at
+FROM
+    shen_user_group_member
+WHERE
+    id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUserGroupMemberByID(ctx context.Context, id int32) (ShenUserGroupMember, error) {
@@ -96,12 +110,15 @@ func (q *Queries) GetUserGroupMemberByID(ctx context.Context, id int32) (ShenUse
 }
 
 const isUserInGroup = `-- name: IsUserInGroup :one
-SELECT EXISTS(
-    SELECT 1 
-    FROM shen_user_group_member 
-    WHERE user_id = $1 
-    AND group_id = $2
-)
+SELECT
+    EXISTS (
+        SELECT
+            1
+        FROM
+            shen_user_group_member
+        WHERE
+            user_id = $1
+            AND group_id = $2)
 `
 
 type IsUserInGroupParams struct {
@@ -117,11 +134,19 @@ func (q *Queries) IsUserInGroup(ctx context.Context, arg IsUserInGroupParams) (b
 }
 
 const listAllGroupMembers = `-- name: ListAllGroupMembers :many
-SELECT m.id, g.name as group_name, u.username as username, m.created_at, m.updated_at
-FROM shen_user_group_member m
-JOIN shen_user u ON m.user_id = u.id
-JOIN shen_group g ON m.group_id = g.id
-ORDER BY g.name, u.username
+SELECT
+    m.id,
+    g.name AS group_name,
+    u.username AS username,
+    m.created_at,
+    m.updated_at
+FROM
+    shen_user_group_member m
+    JOIN shen_user u ON m.user_id = u.id
+    JOIN shen_group g ON m.group_id = g.id
+ORDER BY
+    g.name,
+    u.username
 LIMIT $1 OFFSET $2
 `
 
@@ -165,11 +190,19 @@ func (q *Queries) ListAllGroupMembers(ctx context.Context, arg ListAllGroupMembe
 }
 
 const listGroupsByUser = `-- name: ListGroupsByUser :many
-SELECT g.id, g.name, g.active, g.created_at, g.updated_at
-FROM shen_user_group_member m
-JOIN shen_group g ON m.group_id = g.id
-WHERE m.user_id = $1
-ORDER BY g.name
+SELECT
+    g.id,
+    g.name,
+    g.active,
+    g.created_at,
+    g.updated_at
+FROM
+    shen_user_group_member m
+    JOIN shen_group g ON m.group_id = g.id
+WHERE
+    m.user_id = $1
+ORDER BY
+    g.name
 LIMIT $2 OFFSET $3
 `
 
@@ -206,11 +239,21 @@ func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserPara
 }
 
 const listUsersByGroup = `-- name: ListUsersByGroup :many
-SELECT u.id, u.username, u.hashed_password, u.active, u.role, u.created_at, u.updated_at
-FROM shen_user_group_member m
-JOIN shen_user u ON m.user_id = u.id
-WHERE m.group_id = $1
-ORDER BY u.username
+SELECT
+    u.id,
+    u.username,
+    u.hashed_password,
+    u.active,
+    u.role,
+    u.created_at,
+    u.updated_at
+FROM
+    shen_user_group_member m
+    JOIN shen_user u ON m.user_id = u.id
+WHERE
+    m.group_id = $1
+ORDER BY
+    u.username
 LIMIT $2 OFFSET $3
 `
 
@@ -251,7 +294,7 @@ func (q *Queries) ListUsersByGroup(ctx context.Context, arg ListUsersByGroupPara
 const removeUserFromGroup = `-- name: RemoveUserFromGroup :exec
 DELETE FROM shen_user_group_member
 WHERE user_id = $1
-AND group_id = $2
+    AND group_id = $2
 `
 
 type RemoveUserFromGroupParams struct {
